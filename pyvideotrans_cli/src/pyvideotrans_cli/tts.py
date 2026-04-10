@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 

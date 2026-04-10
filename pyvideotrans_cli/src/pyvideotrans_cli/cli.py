@@ -101,8 +101,8 @@ def main():
 
 def run_transcribe(args):
     """仅执行语音转录"""
-    from pyvideotrans_cli.video import VideoProcessor
-    from pyvideotrans_cli.transcribe import Transcriber
+    from video import VideoProcessor
+    from transcribe import Transcriber
     
     # 1. 提取音频
     processor = VideoProcessor(str(args.input), str(args.output_dir))
@@ -125,15 +125,15 @@ def run_transcribe(args):
 
 def run_translate(args):
     """仅执行字幕翻译"""
-    from pyvideotrans_cli.translate import Translator
+    from translate import Translator
     
     # 读取源字幕
     source_srt = args.output_dir / "source.srt"
     if not source_srt.exists():
         # 尝试从视频中提取并转录
         logger.info("Source subtitles not found, running transcription first...")
-        from pyvideotrans_cli.video import VideoProcessor
-        from pyvideotrans_cli.transcribe import Transcriber
+        from video import VideoProcessor
+        from transcribe import Transcriber
         
         processor = VideoProcessor(str(args.input), str(args.output_dir))
         audio_file = processor.extract_audio()
@@ -162,7 +162,7 @@ def run_translate(args):
 
 def run_tts(args):
     """仅执行 TTS"""
-    from pyvideotrans_cli.tts import QwenTTS, QwenTTSLocal
+    from tts import QwenTTS, QwenTTSLocal
     
     # 读取目标语言字幕
     target_srt = args.output_dir / f"{args.target_lang}.srt"
@@ -204,7 +204,7 @@ def run_tts(args):
 
 def run_merge(args):
     """仅执行音视频合并"""
-    from pyvideotrans_cli.video import VideoProcessor
+    from video import VideoProcessor
     
     processor = VideoProcessor(str(args.input), str(args.output_dir))
     
