@@ -1,5 +1,5 @@
 """
-文本翻译模块 - 使用本地 LLM API 进行翻译
+文本翻译模块 - 支持本地 LLM API 和 Transformers 本地翻译
 """
 import logging
 import re
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Translator:
-    """本地 LLM 翻译器"""
+    """翻译器 - 支持 LLM API 和本地 Transformers"""
     subtitles: List[Dict]
     target_language: str
     api_url: str = "http://localhost:1234/v1"
@@ -20,6 +20,7 @@ class Translator:
     model_name: str = "local-model"
     max_token: int = 4096
     temperature: float = 0.2
+    use_transformers: bool = False  # Флаг для использования локальной модели transformers
     
     def translate(self) -> List[Dict]:
         """
@@ -27,6 +28,13 @@ class Translator:
         Returns:
             List[Dict]: [{"start_time": 0.0, "end_time": 1.5, "text": "翻译后的文本"}]
         """
+        if self.use_transformers:
+            return self._translate_with_transformers()
+        
+        return self._translate_with_llm_api()
+    
+    def _translate_with_llm_api(self) -> List[Dict]:
+        """Перевод через LLM API (OpenAI-совместимый)"""
         try:
             from openai import OpenAI
             import httpx
@@ -75,6 +83,81 @@ class Translator:
             
         except Exception as e:
             logger.error(f"Translation failed: {e}")
+            raise
+    
+    def _translate_with_transformers(self) -> List[Dict]:
+        """Перевод через локальную модель Transformers (NLLB)"""
+        try:
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+            import torch
+            
+            # Маппинг языковых кодов для NLLB
+            lang_map = {
+                'ru': 'rus_Cyrl',
+                'en': 'eng_Latn',
+                'zh': 'zho_Hans',
+                'ja': 'jpn_Jpan',
+                'ko': 'kor_Hang',
+                'de': 'deu_Latn',
+                'fr': 'fra_Latn',
+                'es': 'spa_Latn',
+                'it': 'ita_Latn',
+                'pt': 'por_Latn',
+            }
+            
+            target_lang_code = lang_map.get(self.target_language.lower(), f'{self.target_language}_Latn')
+            
+            logger.info(f"Loading NLLB model for translation to {self.target_language}...")
+            
+            # Загружаем модель и токенизатор
+            model_name = "facebook/nllb-200-distilled-600M"
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            model = model.to(device)
+            logger.info(f"Using device: {device}")
+            
+            translated_subtitles = []
+            batch_size = 5  # Меньший размер батча для экономии памяти
+            
+            for i in range(0, len(self.subtitles), batch_size):
+                batch = self.subtitles[i:i + batch_size]
+                batch_texts = [sub["text"] for sub in batch]
+                
+                # Токенизация
+                inputs = tokenizer(
+                    batch_texts, 
+                    return_tensors="pt", 
+                    padding=True, 
+                    truncation=True, 
+                    max_length=512
+                ).to(device)
+                
+                # Генерация перевода
+                with torch.no_grad():
+                    outputs = model.generate(
+                        **inputs,
+                        forced_bos_token_id=tokenizer.lang_code_to_id[target_lang_code],
+                        max_length=512
+                    )
+                
+                # Декодирование
+                translated_texts = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+                
+                for j, sub in enumerate(batch):
+                    translated_subtitles.append({
+                        "start_time": sub["start_time"],
+                        "end_time": sub["end_time"],
+                        "text": translated_texts[j] if j < len(translated_texts) else sub["text"]
+                    })
+                
+                logger.info(f"Translated batch {i//batch_size + 1} with Transformers")
+            
+            return translated_subtitles
+            
+        except Exception as e:
+            logger.error(f"Transformers translation failed: {e}")
             raise
     
     def _build_prompt(self, texts: List[str]) -> str:

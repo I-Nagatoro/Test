@@ -124,9 +124,11 @@ pyvideotrans-cli -i video.mp4 \
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
 | `--target-lang` | 目标语言代码 | - |
-| `--llm-api` | 本地 LLM API 地址 | `http://localhost:1234/v1` |
+| `--transformers` | Использовать локальную модель NLLB вместо LLM API | `False` |
+| `--llm-api` | LLM API 地址 | `http://localhost:1234/v1` |
 | `--llm-key` | LLM API Key | `not-needed` |
 | `--llm-model` | LLM 模型名称 | `local-model` |
+| `--llm-provider` | LLM 提供商类型 | `openai` |
 
 ### TTS 参数
 | 参数 | 说明 | 默认值 |
@@ -206,6 +208,33 @@ pyvideotrans-cli -i video.mp4 \
     --llm-model qwen:7b
 ```
 
+### Локальный перевод через Transformers (NLLB)
+
+Для перевода без необходимости в API можно использовать модель NLLB от Meta:
+
+```bash
+pyvideotrans-cli -i video.mp4 \
+    --target-lang ru \
+    --transformers
+```
+
+Этот режим использует модель `facebook/nllb-200-distilled-600M`, которая поддерживает более 200 языков.
+Модель будет автоматически загружена при первом запуске (требуется ~2GB места на диске).
+
+#### Преимущества локального перевода:
+- ✅ Не требуется API ключ
+- ✅ Полностью офлайн работа
+- ✅ Поддержка 200+ языков
+- ✅ Бесплатно
+
+#### Недостатки:
+- ⚠️ Медленнее чем LLM API
+- ⚠️ Требует больше памяти (минимум 4GB RAM)
+- ⚠️ Качество перевода может быть ниже чем у больших LLM
+
+#### Поддерживаемые языковые коды:
+`ru`, `en`, `zh`, `ja`, `ko`, `de`, `fr`, `es`, `it`, `pt` и многие другие.
+
 ### 使用 vLLM
 ```bash
 python -m vllm.entrypoints.api_server \
@@ -274,6 +303,7 @@ pyvideotrans-cli -i video.mp4 \
 ## TODO
 
 - [x] Реализация локального Qwen TTS через transformers
+- [x] Локальный перевод через Transformers (NLLB)
 - [ ] Добавить оптимизацию длительности аудио (подгонка под тайминги)
 - [ ] Добавить отображение прогресса (progress bar)
 - [ ] Поддержка пакетной обработки файлов
