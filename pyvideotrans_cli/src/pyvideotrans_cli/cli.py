@@ -117,7 +117,8 @@ def run_transcribe(args):
     )
     
     subtitles = transcriber.transcribe()
-    srt_file = transcriber.save_to_srt(subtitles, str(args.output_dir / "source.srt"))
+    srt_path = args.output_dir / "source.srt"
+    srt_file = transcriber.save_to_srt(subtitles, str(srt_path))
     
     logger.info(f"Transcription saved to: {srt_file}")
     return srt_file
@@ -128,8 +129,9 @@ def run_translate(args):
     from translate import Translator
     
     # 读取源字幕
-    source_srt = args.output_dir / "source.srt"
-    if not source_srt.exists():
+    source_srt_path = args.output_dir / "source.srt"
+    source_srt = str(source_srt_path)
+    if not source_srt_path.exists():
         # 尝试从视频中提取并转录
         logger.info("Source subtitles not found, running transcription first...")
         from video import VideoProcessor
@@ -139,10 +141,10 @@ def run_translate(args):
         audio_file = processor.extract_audio()
         transcriber = Transcriber(audio_file=audio_file, model_name=args.whisper_model)
         subtitles = transcriber.transcribe()
-        source_srt = transcriber.save_to_srt(subtitles, str(source_srt))
+        source_srt = transcriber.save_to_srt(subtitles, str(source_srt_path))
     
     # 解析 SRT
-    subtitles = parse_srt(str(source_srt))
+    subtitles = parse_srt(source_srt)
     
     # 翻译
     translator = Translator(
@@ -154,7 +156,8 @@ def run_translate(args):
     )
     
     translated = translator.translate()
-    output_srt = translator.save_to_srt(translated, str(args.output_dir / f"{args.target_lang}.srt"))
+    output_srt_path = args.output_dir / f"{args.target_lang}.srt"
+    output_srt = translator.save_to_srt(translated, str(output_srt_path))
     
     logger.info(f"Translation saved to: {output_srt}")
     return output_srt
@@ -165,11 +168,12 @@ def run_tts(args):
     from tts import QwenTTS, QwenTTSLocal
     
     # 读取目标语言字幕
-    target_srt = args.output_dir / f"{args.target_lang}.srt"
-    if not target_srt.exists():
-        raise FileNotFoundError(f"Target subtitles not found: {target_srt}")
+    target_srt_path = args.output_dir / f"{args.target_lang}.srt"
+    target_srt = str(target_srt_path)
+    if not target_srt_path.exists():
+        raise FileNotFoundError(f"Target subtitles not found: {target_srt_path}")
     
-    subtitles = parse_srt(str(target_srt))
+    subtitles = parse_srt(target_srt)
     
     if args.qwen_local:
         tts = QwenTTSLocal(
@@ -196,7 +200,8 @@ def run_tts(args):
     result = tts.synthesize()
     
     # 合并音频
-    merged_audio = tts.merge_audio(str(args.output_dir / "dubbed.wav"))
+    merged_audio_path = args.output_dir / "dubbed.wav"
+    merged_audio = tts.merge_audio(str(merged_audio_path))
     logger.info(f"Merged audio saved to: {merged_audio}")
     
     return merged_audio
@@ -208,20 +213,21 @@ def run_merge(args):
     
     processor = VideoProcessor(str(args.input), str(args.output_dir))
     
-    dubbed_audio = args.output_dir / "dubbed.wav"
-    if not dubbed_audio.exists():
-        raise FileNotFoundError(f"Dubbed audio not found: {dubbed_audio}")
+    dubbed_audio_path = args.output_dir / "dubbed.wav"
+    dubbed_audio = str(dubbed_audio_path)
+    if not dubbed_audio_path.exists():
+        raise FileNotFoundError(f"Dubbed audio not found: {dubbed_audio_path}")
     
     output_video = processor.merge_audio_video(
-        str(dubbed_audio),
+        dubbed_audio,
         original_audio=args.keep_original_audio
     )
     
     if args.add_subtitles:
-        subtitle_file = args.output_dir / f"{args.target_lang}.srt"
-        if subtitle_file.exists():
+        subtitle_file_path = args.output_dir / f"{args.target_lang}.srt"
+        if subtitle_file_path.exists():
             output_video = processor.add_subtitles(
-                str(subtitle_file),
+                str(subtitle_file_path),
                 hardsub=args.hardsub
             )
     
