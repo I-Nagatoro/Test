@@ -45,10 +45,12 @@ def main():
     translate_group = parser.add_argument_group("Translation Options")
     translate_group.add_argument("--target-lang", required="--mode" in sys.argv and "translate" in sys.argv or "--mode" in sys.argv and "full" in sys.argv,
                                  help="目标语言代码 (如：en, zh, ja)")
-    translate_group.add_argument("--llm-api", default="http://localhost:1234/v1", 
-                                 help="本地 LLM API 地址")
-    translate_group.add_argument("--llm-key", default="not-needed", help="LLM API Key")
-    translate_group.add_argument("--llm-model", default="local-model", help="LLM 模型名称")
+    translate_group.add_argument("--llm-api", default=None, 
+                                 help="LLM API 地址 (如：https://api.openai.com/v1, https://api.deepseek.com/v1)")
+    translate_group.add_argument("--llm-key", required=True, help="LLM API Key")
+    translate_group.add_argument("--llm-model", default="gpt-3.5-turbo", help="LLM 模型名称")
+    translate_group.add_argument("--llm-provider", choices=["openai", "deepseek", "qwen", "custom"], default="openai",
+                                 help="LLM 提供商类型")
     
     # TTS 参数
     tts_group = parser.add_argument_group("TTS Options")
@@ -130,6 +132,18 @@ def run_translate(args):
     """仅执行字幕翻译"""
     from translate import Translator
     
+    # 设置 API URL 基于提供商
+    api_url = args.llm_api
+    if not api_url:
+        if args.llm_provider == "openai":
+            api_url = "https://api.openai.com/v1"
+        elif args.llm_provider == "deepseek":
+            api_url = "https://api.deepseek.com/v1"
+        elif args.llm_provider == "qwen":
+            api_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        else:
+            raise ValueError("--llm-api is required for custom provider")
+    
     # 读取源字幕
     source_srt_path = args.output_dir / "source.srt"
     source_srt = str(source_srt_path)
@@ -152,7 +166,7 @@ def run_translate(args):
     translator = Translator(
         subtitles=subtitles,
         target_language=args.target_lang,
-        api_url=args.llm_api,
+        api_url=api_url,
         api_key=args.llm_key,
         model_name=args.llm_model
     )
