@@ -177,7 +177,8 @@ def run_tts(args):
             target_language=args.target_lang,
             model_name=args.qwen_local_model,
             output_dir=str(args.output_dir / "tts"),
-            is_cuda=args.cuda
+            device="cuda" if args.cuda else "cpu",
+            torch_dtype="float16" if args.cuda else "float32"
         )
     else:
         if not args.qwen_api_key:
