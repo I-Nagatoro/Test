@@ -67,17 +67,19 @@ def main():
     
     args = parser.parse_args()
     
-    # 验证输入文件
+    # Преобразуем output_dir в Path для удобной работы с путями
+    args.output_dir = Path(args.output_dir)
+    
+    #验证输入文件
     input_path = Path(args.input)
     if not input_path.exists():
         logger.error(f"Input file not found: {args.input}")
         sys.exit(1)
     
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     
     logger.info(f"Processing: {input_path}")
-    logger.info(f"Output directory: {output_dir}")
+    logger.info(f"Output directory: {args.output_dir}")
     logger.info(f"Mode: {args.mode}")
     
     try:
