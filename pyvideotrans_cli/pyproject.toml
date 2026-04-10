@@ -30,6 +30,11 @@ dependencies = [
     "requests>=2.31.0",
     "pydub>=0.25.1",
     "ffmpeg-python>=0.2.0",
+    "transformers>=4.40.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "accelerate>=0.25.0",
+    "soundfile>=0.12.1",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +43,9 @@ cuda = [
     "torchaudio>=2.0.0",
 ]
 qwen-local = [
-    "qwen-tts>=0.1.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.25.0",
+    "soundfile>=0.12.1",
 ]
 dev = [
     "pytest>=7.0.0",

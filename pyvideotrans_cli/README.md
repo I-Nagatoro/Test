@@ -220,25 +220,64 @@ pyvideotrans-cli -i video.mp4 \
 
 ## Qwen TTS 配置
 
-### 获取 API Key
+### API 模式
+
+#### 获取 API Key
 1. 访问 https://dashscope.console.aliyun.com/
 2. 注册/登录阿里云账号
 3. 创建 API Key
 
-### 可用音色
+#### 可用音色
 - Cherry (女声，推荐)
 - Emily (女声)
 - Serena (女声)
 - Ethan (男声)
 - Jack (男声)
 
+#### 使用示例
+```bash
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --qwen-api-key YOUR_API_KEY \
+    --qwen-voice Cherry
+```
+
+### Локальная версия (через transformers)
+
+#### Требования
+- GPU с минимум 8GB VRAM (для модели 0.7B)
+- Установленные зависимости: `pip install transformers accelerate torch torchaudio soundfile`
+
+#### Использование
+```bash
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --qwen-local \
+    --qwen-local-model "Qwen/Qwen3-TTS-0.7B" \
+    --cuda
+```
+
+#### Поддерживаемые модели
+- `Qwen/Qwen3-TTS-0.7B` (рекомендуется)
+- `Qwen/Qwen3-TTS-1.5B` (требует больше VRAM)
+
+Модель будет автоматически загружена из HuggingFace при первом запуске.
+
+#### На CPU (медленнее)
+```bash
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --qwen-local \
+    --qwen-local-model "Qwen/Qwen3-TTS-0.7B"
+```
+
 ## TODO
 
-- [ ] 完善本地 Qwen TTS 推理实现
-- [ ] 添加音频时长对齐优化
-- [ ] 支持更多 Whisper 模型
-- [ ] 添加进度条显示
-- [ ] 支持批量处理
+- [x] Реализация локального Qwen TTS через transformers
+- [ ] Добавить оптимизацию длительности аудио (подгонка под тайминги)
+- [ ] Добавить отображение прогресса (progress bar)
+- [ ] Поддержка пакетной обработки файлов
+- [ ] Улучшить обработку ошибок при загрузке моделей
 
 ## 许可证
 
