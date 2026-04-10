@@ -1,136 +1,249 @@
-# PyVideoTrans CLI
+# pyvideotrans-cli
 
-精简版视频翻译配音工具，去除了原版复杂的 GUI 和多余的渠道支持，专注于核心功能。
+精简版视频翻译 CLI 工具，基于 [pyvideotrans](https://github.com/jianchang512/pyvideotrans) 项目裁剪而成。
 
-## 功能特性
+## 功能特点
 
-- ✅ **语音识别**: 支持 Whisper (faster-whisper / openai-whisper)
-- ✅ **文本翻译**: 支持本地 LLM 模型（待实现具体集成）
-- ✅ **语音合成**: 支持 Qwen TTS (API 版本和本地版本)
-- ❌ **不支持**: 其他 TTS 渠道、 diarization、声音克隆等
+✅ **保留的核心功能:**
+- 🎵 视频→音频提取 (ffmpeg)
+- 🎤 语音识别 (Whisper - faster-whisper / openai-whisper)
+- 🌐 文本翻译 (本地 LLM API - OpenAI 兼容接口)
+- 🔊 TTS 配音 (Qwen TTS API / Local)
+- 🎬 音视频合并 (ffmpeg)
+
+❌ **已移除的功能:**
+- GUI 界面
+- 30+ 种其他 TTS 渠道 (仅保留 Qwen TTS)
+- 说话人分离 (diarization)
+- 声音克隆
+- 复杂的音频对齐逻辑
+- 批量处理
+- 其他翻译渠道 (仅保留本地 LLM)
 
 ## 安装
 
 ### 基础安装
-
 ```bash
+cd pyvideotrans_cli
 pip install -e .
 ```
 
 ### 带 CUDA 支持
-
 ```bash
 pip install -e ".[cuda]"
 ```
 
-### 手动安装依赖
-
+### 开发环境
 ```bash
-pip install faster-whisper dashscope requests pydub
+pip install -e ".[dev]"
 ```
+
+## 依赖要求
+
+- Python >= 3.10
+- ffmpeg (必须预先安装)
+- NVIDIA GPU + CUDA (可选，用于加速)
 
 ## 使用方法
 
-### 完整流程（转录 + 翻译 + 配音）
-
+### 完整流程：视频翻译
 ```bash
-pyvideotrans-cli -i input.mp4 -o ./output --target-lang en --qwen-api-key YOUR_API_KEY
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --qwen-api-key YOUR_QWEN_API_KEY \
+    --output-dir ./output
 ```
 
-### 仅语音识别
+### 分步骤执行
 
+#### 1. 仅转录 (语音→字幕)
 ```bash
-pyvideotrans-cli -i input.mp4 --mode transcribe --whisper-model base
+pyvideotrans-cli -i video.mp4 \
+    --mode transcribe \
+    --whisper-model base \
+    --source-lang auto \
+    --output-dir ./output
 ```
 
-### 仅翻译
+输出：`./output/source.srt`
 
+#### 2. 仅翻译 (字幕→翻译字幕)
 ```bash
-pyvideotrans-cli -i input.mp4 --mode translate --source-lang zh --target-lang en
+pyvideotrans-cli -i video.mp4 \
+    --mode translate \
+    --target-lang en \
+    --llm-api http://localhost:1234/v1 \
+    --llm-key not-needed \
+    --llm-model qwen-7b \
+    --output-dir ./output
 ```
 
-### 仅 TTS
+输出：`./output/en.srt`
 
+#### 3. 仅 TTS (翻译字幕→配音音频)
 ```bash
-pyvideotrans-cli -i input.mp4 --mode tts --tts-type qwen_api --voice-role Cherry
+pyvideotrans-cli -i video.mp4 \
+    --mode tts \
+    --target-lang en \
+    --qwen-api-key YOUR_KEY \
+    --qwen-voice Cherry \
+    --output-dir ./output
 ```
+
+输出：`./output/dubbed.wav`
+
+#### 4. 仅合并 (视频 + 配音→最终视频)
+```bash
+pyvideotrans-cli -i video.mp4 \
+    --mode merge \
+    --target-lang en \
+    --add-subtitles \
+    --hardsub \
+    --output-dir ./output
+```
+
+输出：`./output/video_dubbed.mp4`
 
 ## 参数说明
 
+### 核心参数
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `-i, --input` | 输入视频文件 | 必填 |
-| `-o, --output` | 输出目录 | `./output` |
-| `-c, --cache` | 缓存目录 | `./cache` |
+| `-i, --input` | 输入视频文件路径 (必选) | - |
+| `-o, --output-dir` | 输出目录 | `./output` |
+| `--mode` | 运行模式 | `full` |
+
+### 转录参数
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--whisper-model` | Whisper 模型大小 | `tiny` |
 | `--source-lang` | 源语言代码 | `auto` |
-| `--target-lang` | 目标语言代码 | `en` |
-| `--whisper-model` | Whisper 模型 | `base` |
-| `--cuda` | 启用 CUDA 加速 | `False` |
-| `--tts-type` | TTS 类型 | `qwen_api` |
-| `--voice-role` | Qwen TTS 角色 | `Cherry` |
-| `--qwen-api-key` | Qwen API 密钥 | `` |
-| `--mode` | 处理模式 | `all` |
+| `--cuda` | 使用 CUDA 加速 | `False` |
 
-## 支持的 Whisper 模型
+### 翻译参数
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--target-lang` | 目标语言代码 | - |
+| `--llm-api` | 本地 LLM API 地址 | `http://localhost:1234/v1` |
+| `--llm-key` | LLM API Key | `not-needed` |
+| `--llm-model` | LLM 模型名称 | `local-model` |
 
-- `tiny` - 最小最快，精度最低
-- `base` - 平衡选择（推荐）
-- `small` - 更高精度
-- `medium` - 高精度
-- `large` - 最高精度，最慢
+### TTS 参数
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--qwen-api-key` | Qwen TTS API Key | - |
+| `--qwen-model` | Qwen TTS 模型 | `qwen3-tts-flash` |
+| `--qwen-voice` | Qwen TTS 音色 | `Cherry` |
+| `--qwen-local` | 使用本地 Qwen TTS | `False` |
+| `--qwen-local-model` | 本地 Qwen 模型大小 | `1.7B` |
 
-## Qwen TTS 角色
+### 合并参数
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--keep-original-audio` | 保留原始音频 (混合) | `False` |
+| `--add-subtitles` | 添加字幕到视频 | `False` |
+| `--hardsub` | 硬字幕 (烧录) | `False` |
 
-常用角色：
-- `Cherry` - 女声
-- `Alex` - 男声
-- `Emma` - 女声
-- `Jack` - 男声
-
-更多角色请参考 Qwen TTS 文档。
-
-## 项目结构
+## Pipeline 流程
 
 ```
-pyvideotrans_cli/
-├── videotrans/
-│   ├── cli.py          # 主 CLI 入口
-│   ├── tts/            # TTS 模块（预留）
-│   ├── recognition/    # 语音识别模块（预留）
-│   ├── translator/     # 翻译模块（预留）
-│   └── util/           # 工具函数（预留）
-├── pyproject.toml      # 项目配置
-└── README.md           # 说明文档
+┌─────────────┐
+│  Input Video │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Extract Audio│ (ffmpeg)
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│  Transcribe │ (Whisper)
+└──────┬──────┘
+       │ source.srt
+       ▼
+┌─────────────┐
+│  Translate  │ (Local LLM)
+└──────┬──────┘
+       │ {lang}.srt
+       ▼
+┌─────────────┐
+│     TTS     │ (Qwen TTS)
+└──────┬──────┘
+       │ dubbed.wav
+       ▼
+┌─────────────┐
+│    Merge    │ (ffmpeg)
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Output Video│
+└─────────────┘
 ```
 
-## 与原版对比
+## 本地 LLM 配置示例
 
-| 功能 | 原版 pyvideotrans | 精简版 CLI |
-|------|-------------------|------------|
-| GUI 界面 | ✅ | ❌ |
-| Whisper 识别 | ✅ | ✅ |
-| 本地 LLM 翻译 | ✅ | ✅ (待完善) |
-| Qwen TTS API | ✅ | ✅ |
-| Qwen TTS Local | ✅ | ⏳ (待实现) |
-| 其他 TTS 渠道 | ✅ (30+种) | ❌ |
-| 声音克隆 | ✅ | ❌ |
-| 说话人分离 | ✅ | ❌ |
-| 音频对齐 | ✅ | ❌ |
-| 批量处理 | ✅ | ❌ |
+### 使用 LM Studio
+```bash
+# 启动 LM Studio 并加载模型
+# API 地址：http://localhost:1234/v1
+
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --llm-api http://localhost:1234/v1 \
+    --llm-model local-model
+```
+
+### 使用 Ollama
+```bash
+# 启动 Ollama
+ollama run qwen:7b
+
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --llm-api http://localhost:11434/v1 \
+    --llm-model qwen:7b
+```
+
+### 使用 vLLM
+```bash
+python -m vllm.entrypoints.api_server \
+    --model Qwen/Qwen-7B-Chat \
+    --port 8000
+
+pyvideotrans-cli -i video.mp4 \
+    --target-lang en \
+    --llm-api http://localhost:8000/v1 \
+    --llm-model Qwen/Qwen-7B-Chat
+```
+
+## Qwen TTS 配置
+
+### 获取 API Key
+1. 访问 https://dashscope.console.aliyun.com/
+2. 注册/登录阿里云账号
+3. 创建 API Key
+
+### 可用音色
+- Cherry (女声，推荐)
+- Emily (女声)
+- Serena (女声)
+- Ethan (男声)
+- Jack (男声)
 
 ## TODO
 
-- [ ] 实现本地 Qwen TTS 推理
-- [ ] 集成实际本地 LLM 翻译（Ollama/vLLM）
-- [ ] 实现音频片段合并逻辑
-- [ ] 添加视频硬编码字幕功能
-- [ ] 添加背景音处理
-- [ ] 优化错误处理和重试机制
+- [ ] 完善本地 Qwen TTS 推理实现
+- [ ] 添加音频时长对齐优化
+- [ ] 支持更多 Whisper 模型
+- [ ] 添加进度条显示
+- [ ] 支持批量处理
 
-## License
+## 许可证
 
-MIT License
+MIT License (继承自原项目)
 
 ## 致谢
 
-本项目基于 [pyvideotrans](https://github.com/jianchang512/pyvideotrans) 精简改造。
+本项目基于 [pyvideotrans](https://github.com/jianchang512/pyvideotrans) 裁剪开发，感谢原作者的贡献。
