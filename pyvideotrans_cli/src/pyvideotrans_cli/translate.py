@@ -118,6 +118,18 @@ class Translator:
             model = model.to(device)
             logger.info(f"Using device: {device}")
             
+            # Получаем ID целевого языка (совместимо с новыми версиями transformers)
+            forced_bos_token_id = None
+            if hasattr(tokenizer, 'lang_code_to_id'):
+                forced_bos_token_id = tokenizer.lang_code_to_id[target_lang_code]
+            elif hasattr(tokenizer, 'additional_special_tokens_ids'):
+                # Для новых версий transformers
+                token_index = tokenizer.additional_special_tokens.index(target_lang_code)
+                forced_bos_token_id = tokenizer.additional_special_tokens_ids[token_index]
+            else:
+                # Фоллбэк: ищем токен вручную
+                forced_bos_token_id = tokenizer.convert_tokens_to_ids(target_lang_code)
+            
             translated_subtitles = []
             batch_size = 5  # Меньший размер батча для экономии памяти
             
@@ -138,7 +150,7 @@ class Translator:
                 with torch.no_grad():
                     outputs = model.generate(
                         **inputs,
-                        forced_bos_token_id=tokenizer.lang_code_to_id[target_lang_code],
+                        forced_bos_token_id=forced_bos_token_id,
                         max_length=512
                     )
                 
